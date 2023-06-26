@@ -4,6 +4,7 @@ import hk.ring0.othello.game.Board
 import hk.ring0.othello.game.BoardStorage
 import hk.ring0.othello.game.Player
 import hk.ring0.othello.game.Move
+import hk.ring0.othello.game.BoardCache
 import hk.ring0.othello.mcts.Node
 import hk.ring0.othello.mcts.State
 import hk.ring0.othello.mcts.Tree
@@ -125,5 +126,35 @@ class OthelloTest {
         val (size, height) = tree.dimension
         assertThat(size).isEqualTo(6)
         assertThat(height).isEqualTo(3)
+    }
+
+    @Test
+    fun givenSomeBoards_whenCached_thenCacheCorrectly() {
+        val boards = List<Board>(4) { Board() }
+        boards[2].pass()
+        boards[3].pass()
+
+        val nothing = emptyList<Board>()
+
+        BoardCache.add(boards[0], Player.BLACK, nothing)
+        BoardCache.add(boards[1], Player.BLACK, nothing)
+        BoardCache.add(boards[2], Player.BLACK, nothing)
+        BoardCache.add(boards[3], Player.BLACK, nothing)
+        BoardCache.add(boards[0], Player.WHITE, nothing)
+        BoardCache.add(boards[1], Player.WHITE, nothing)
+        BoardCache.add(boards[2], Player.WHITE, nothing)
+        BoardCache.add(boards[3], Player.WHITE, nothing)
+
+        BoardCache.get(boards[0], Player.BLACK)
+        BoardCache.get(boards[1], Player.BLACK)
+        BoardCache.get(boards[2], Player.BLACK)
+        BoardCache.get(boards[3], Player.BLACK)
+        BoardCache.get(boards[0], Player.WHITE)
+        BoardCache.get(boards[1], Player.WHITE)
+        BoardCache.get(boards[2], Player.WHITE)
+        BoardCache.get(boards[3], Player.WHITE)
+
+        assertThat(BoardCache.size).isEqualTo(4)
+        assertThat(BoardCache.cacheHit).isEqualTo(8)
     }
 }

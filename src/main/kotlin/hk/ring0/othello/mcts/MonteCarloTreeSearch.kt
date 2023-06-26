@@ -26,19 +26,22 @@ class MonteCarloTreeSearch(val level: Int = 1) {
         val end = System.nanoTime() + level * 1e8.toLong() // 100ms per level
         var simulations = 0
         val start = System.nanoTime()
+        var leaves = 0
+        var loses = 0
+        var lossRate = 50.0
 
         if (rootNode.state.getBoardStatus() != Status.ONGOING) {
             return null
         }
 
-        while ((System.nanoTime() < end && simulations < 256)) {
+        while ((System.nanoTime() < end && (leaves == 0 || simulations < leaves * 10) && (simulations < leaves || lossRate in 5.0..95.0))) {
             // println("\n----- Simulation $simulations -----\n")
             // selection
             val promisingNode = selectPromisingNode(rootNode)
 
             // expansion
             if (promisingNode.state.getBoardStatus() == Status.ONGOING) {
-                expandNode(promisingNode)
+                leaves += expandNode(promisingNode)
             }
 
             // simulation
@@ -52,11 +55,17 @@ class MonteCarloTreeSearch(val level: Int = 1) {
             // backpropagation
             backPropagation(nodeToExplore, result)
             simulations++
+
+            if (opponent.hasWon(result)) {
+                loses++
+            }
+
+            lossRate = loses.toDouble() / leaves * 100
         }
 
         val elapsed = (System.nanoTime() - start) / 1e6
         val (treeSize, treeHeight) = tree.dimension
-        println("simulations: $simulations tree: [size=${treeSize} height=${treeHeight}] time: $elapsed ms")
+        println("simulations: $simulations tree: [size=${treeSize} height=${treeHeight}] time: $elapsed ms lossRate: $lossRate (loses: $loses leaves: $leaves)")
         return rootNode.bestChild.state.board
     }
 
@@ -68,15 +77,18 @@ class MonteCarloTreeSearch(val level: Int = 1) {
         return node
     }
     
-    private fun expandNode(node: Node) {
+    private fun expandNode(node: Node): Int {
+        var count = 0
         for (state in node.state.findPossibleStates()) {
             node += Node(state)
+            count++
         }
+        return count
     }
 
     private fun simulateRandomPlayout(node: Node): Status {
         var status = node.state.getBoardStatus()
-        if (status.ordinal == opponent.id) {
+        if (opponent.hasWon(status)) {
             node.parent!!.state.winScore = Int.MIN_VALUE
             // println("Skipping simulation on losing node")
             return status
@@ -104,7 +116,7 @@ class MonteCarloTreeSearch(val level: Int = 1) {
         var node: Node? = nodeToExplore
         while (node != null) {
             node.state.visitCount++
-            if (node.state.player.id == result.ordinal) {
+            if (node.state.player.hasWon(result)) {
                 node.state.addScore(10)
             }
             node = node.parent

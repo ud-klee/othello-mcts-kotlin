@@ -1,7 +1,20 @@
 package hk.ring0.othello.game
 
+import java.util.Arrays
+
 class BoardStorage {
     private val cells: IntArray = intArrayOf(0, 0, 0, 0)
+
+    override fun hashCode(): Int {
+        return Arrays.hashCode(cells)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is BoardStorage) {
+            return false
+        }
+        return Arrays.equals(cells, other.cells)
+    }
 
     fun copy(): BoardStorage {
         val copy = BoardStorage()

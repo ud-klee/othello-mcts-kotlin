@@ -7,6 +7,10 @@ enum class Player(val id: Int) {
         BLACK -> WHITE
         WHITE -> BLACK
     }
+
+    fun hasWon(status: Status): Boolean {
+        return status.ordinal == id
+    }
 }
 
 enum class Status {
@@ -19,6 +23,37 @@ data class Move(val x: Int, val y: Int, val flippables: List<IntArray>)
 
 val DX = intArrayOf(-1, 0, 1, -1, 1, -1, 0, 1)
 val DY = intArrayOf(-1, -1, -1, 0, 0, 1, 1, 1)
+
+object BoardCache {
+    private val blackCache = mutableMapOf<Board, List<Board>>()
+    private val whiteCache = mutableMapOf<Board, List<Board>>()
+
+    val size get() = blackCache.size + whiteCache.size
+
+    var cacheHit = 0
+        private set
+
+    fun has(board: Board, player: Player) = when (player) {
+        Player.BLACK -> blackCache.containsKey(board)
+        Player.WHITE -> whiteCache.containsKey(board)
+    }
+
+    fun add(board: Board, player: Player, nextStates: List<Board>) = when (player) {
+        Player.BLACK -> blackCache[board] = nextStates
+        Player.WHITE -> whiteCache[board] = nextStates
+    }
+
+    fun get(board: Board, player: Player): List<Board>? {
+        val value = when (player) {
+            Player.BLACK -> blackCache[board]
+            Player.WHITE -> whiteCache[board]
+        }
+        if (value != null) {
+            cacheHit++
+        }
+        return value
+    }
+}
 
 class Board {
     private val store: BoardStorage
@@ -33,6 +68,17 @@ class Board {
 
     internal constructor(store: BoardStorage) {
         this.store = store
+    }
+
+    override fun hashCode(): Int {
+        return store.hashCode() + 31 * passes;
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is Board) {
+            return false
+        }
+        return store == other.store && passes == other.passes
     }
 
     fun copy(): Board {
@@ -93,18 +139,24 @@ class Board {
 
     fun findPossibleStates(player: Player): List<Board> {
         val states = mutableListOf<Board>()
-        explore(player) { x, y, flippables ->
-            if (flippables.size > 0) {
+        val cached = BoardCache.get(this, player)
+        if (cached != null && cached.size > 0) {
+            states.addAll(cached.map(Board::copy))
+        } else {
+            explore(player) { x, y, flippables ->
+                if (flippables.size > 0) {
+                    val tempBoard = this.copy()
+                    tempBoard.flip(flippables, player)
+                    tempBoard[x, y] = player.id
+                    states += tempBoard
+                }
+            }
+            if (states.size == 0) {
                 val tempBoard = this.copy()
-                tempBoard.flip(flippables, player)
-                tempBoard[x, y] = player.id
+                tempBoard.passes = passes + 1
                 states += tempBoard
             }
-        }
-        if (states.size == 0) {
-            val tempBoard = this.copy()
-            tempBoard.passes = passes + 1
-            states += tempBoard
+            BoardCache.add(this, player, states)
         }
         return states
     }

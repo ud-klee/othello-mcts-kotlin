@@ -5,6 +5,7 @@ import java.io.File
 import com.google.gson.Gson
 
 import hk.ring0.othello.game.Board
+import hk.ring0.othello.game.BoardCache
 import hk.ring0.othello.game.Player
 import hk.ring0.othello.game.Status
 import hk.ring0.othello.mcts.MonteCarloTreeSearch
@@ -44,14 +45,14 @@ fun simulate() {
     var turn = 1
     var status = Status.ONGOING
 
-    val mcts = MonteCarloTreeSearch(level = 2)
+    val mcts = MonteCarloTreeSearch(level = 4)
 
     var totalMem = Runtime.getRuntime().totalMemory() / 1024
     var freeMem = Runtime.getRuntime().freeMemory() / 1024
-    println("Total mem: $totalMem | Free mem: $freeMem | Used: ${totalMem - freeMem}")
+    println("Memory (totalKB/usedKB): $totalMem/${totalMem - freeMem}")
 
     while (status == Status.ONGOING) {
-        println("Turn $turn")
+        println("Turn $turn: $player")
 
         val tempBoard = mcts.findNextMove(board, player)
         if (tempBoard == null) {
@@ -60,7 +61,7 @@ fun simulate() {
         }
 
         board = tempBoard
-        // println(board)
+        println(board)
 
         player = player.opponent
         status = board.getStatus(player)
@@ -72,7 +73,8 @@ fun simulate() {
 
     totalMem = Runtime.getRuntime().totalMemory() / 1024
     freeMem = Runtime.getRuntime().freeMemory() / 1024
-    println("Total mem: $totalMem | Free mem: $freeMem | Used: ${totalMem - freeMem}")
+    println("Memory (totalKB/usedKB): $totalMem/${totalMem - freeMem}")
+    println("Board cache size/hit: ${BoardCache.size}/${BoardCache.cacheHit}")
 }
 
 fun main(args: Array<String>) {
