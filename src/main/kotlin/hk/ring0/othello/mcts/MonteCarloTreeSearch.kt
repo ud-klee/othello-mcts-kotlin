@@ -29,12 +29,16 @@ class MonteCarloTreeSearch(val level: Int = 1) {
         var leaves = 0
         var loses = 0
         var lossRate = 50.0
+        var explorationRate = 0.0
+        val minSimulations = 42
 
         if (rootNode.state.getBoardStatus() != Status.ONGOING) {
             return null
         }
 
-        while ((System.nanoTime() < end && (leaves == 0 || simulations < leaves * 10) && (simulations < leaves || lossRate in 5.0..95.0))) {
+        while (((System.nanoTime() < end || simulations < minSimulations)
+                && explorationRate < 1000.0
+                && lossRate in 5.0..95.0)) {
             // println("\n----- Simulation $simulations -----\n")
             // selection
             val promisingNode = selectPromisingNode(rootNode)
@@ -55,17 +59,21 @@ class MonteCarloTreeSearch(val level: Int = 1) {
             // backpropagation
             backPropagation(nodeToExplore, result)
             simulations++
+            explorationRate = simulations.toDouble() / leaves * 100
 
             if (opponent.hasWon(result)) {
                 loses++
             }
 
-            lossRate = loses.toDouble() / leaves * 100
+            if (explorationRate > 5.0 && simulations > minSimulations) {
+                lossRate = loses.toDouble() / simulations * 100
+            }
         }
 
+        lossRate = loses.toDouble() / simulations * 100
         val elapsed = (System.nanoTime() - start) / 1e6
         val (treeSize, treeHeight) = tree.dimension
-        println("simulations: $simulations tree: [size=${treeSize} height=${treeHeight}] time: $elapsed ms lossRate: $lossRate (loses: $loses leaves: $leaves)")
+        println("simulations: $simulations tree: [size=${treeSize} height=${treeHeight}] time: $elapsed ms lossRate: $lossRate explorationRate: $explorationRate (loses: $loses leaves: $leaves)")
         return rootNode.bestChild.state.board
     }
 
