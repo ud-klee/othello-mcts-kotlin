@@ -23,7 +23,7 @@ fun replay(path: String) {
             val (x, y) = move
             println("Turn $turn: $player plays $x, $y")
             board.play(x, y, player)
-            println(board.stringify(x, y))
+            println(board)
 
             val (black, white) = board.getScores()
             println("Black: $black, White: $white")

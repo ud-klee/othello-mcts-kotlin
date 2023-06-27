@@ -58,6 +58,8 @@ object BoardCache {
 class Board {
     private val store: BoardStorage
     private var passes = 0
+    private var x = -1
+    private var y = -1
 
     constructor() : this(BoardStorage()) {
         this[3, 3] = 2
@@ -71,18 +73,22 @@ class Board {
     }
 
     override fun hashCode(): Int {
-        return store.hashCode() + 31 * passes;
+        return store.hashCode() + 31 * passes + 31 * 31 * x + 31 * 31 * 31 * y
     }
 
     override fun equals(other: Any?): Boolean {
         if (other !is Board) {
             return false
         }
-        return store == other.store && passes == other.passes
+        return store == other.store && passes == other.passes && x == other.x && y == other.y
     }
 
     fun copy(): Board {
-        return Board(store.copy())
+        val tempBoard = Board(store.copy())
+        tempBoard.passes = passes
+        tempBoard.x = x
+        tempBoard.y = y
+        return tempBoard
     }
 
     operator fun get(x: Int, y: Int): Int {
@@ -94,7 +100,11 @@ class Board {
     }
 
     override fun toString(): String {
-        return stringify(-1, -1)
+        return if (passes > 0) {
+            stringify(-1, -1)
+        } else {
+            stringify(x, y)
+        }
     }
 
     fun stringify(ax: Int, ay: Int): String {
@@ -148,12 +158,17 @@ class Board {
                     val tempBoard = this.copy()
                     tempBoard.flip(flippables, player)
                     tempBoard[x, y] = player.id
+                    tempBoard.passes = 0
+                    tempBoard.x = x
+                    tempBoard.y = y
                     states += tempBoard
                 }
             }
             if (states.size == 0) {
                 val tempBoard = this.copy()
                 tempBoard.passes = passes + 1
+                tempBoard.x = -1
+                tempBoard.y = -1
                 states += tempBoard
             }
             BoardCache.add(this, player, states)
@@ -190,6 +205,8 @@ class Board {
         flip(move.flippables, player)
         this[move.x, move.y] = player.id
         passes = 0
+        x = move.x
+        y = move.y
     }
 
     fun play(x: Int, y: Int, player: Player) {
@@ -199,6 +216,8 @@ class Board {
 
     fun pass() {
         passes++
+        x = -1
+        y = -1
     }
 
     private fun flip(flippables: List<IntArray>, player: Player) {

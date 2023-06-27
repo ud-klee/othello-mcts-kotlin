@@ -36,8 +36,7 @@ class MonteCarloTreeSearch(val level: Int = 1) {
             return null
         }
 
-        while (((System.nanoTime() < end || simulations < minSimulations)
-                && explorationRate < 1000.0
+        while (((System.nanoTime() < end || simulations < minOf(minSimulations, leaves * 3) || leaves == 0)
                 && lossRate in 5.0..95.0)) {
             // println("\n----- Simulation $simulations -----\n")
             // selection
@@ -65,7 +64,7 @@ class MonteCarloTreeSearch(val level: Int = 1) {
                 loses++
             }
 
-            if (explorationRate > 5.0 && simulations > minSimulations) {
+            if (explorationRate >= 5.0 && simulations >= minOf(minSimulations, leaves * 3)) {
                 lossRate = loses.toDouble() / simulations * 100
             }
         }

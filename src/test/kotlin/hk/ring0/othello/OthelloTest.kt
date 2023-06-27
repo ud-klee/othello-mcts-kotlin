@@ -82,7 +82,7 @@ class OthelloTest {
         assertThat(board1.toString().trim()).isEqualTo("""
             | . . . . . . . .
             | . . . . . . . .
-            | . . . x . . . .
+            | . . .>x . . . .
             | . . . x x . . .
             | . . . x o . . .
             | . . . . . . . .
