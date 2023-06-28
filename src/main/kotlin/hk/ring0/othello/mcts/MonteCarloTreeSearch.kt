@@ -32,7 +32,10 @@ class MonteCarloTreeSearch(val level: Int = 1) {
         var explorationRate = 0.0
         val minSimulations = 42
 
-        if (rootNode.state.getBoardStatus() != Status.ONGOING) {
+        val rootStatus = rootNode.state.getBoardStatus()
+        if (rootStatus != Status.ONGOING) {
+            // println(board)
+            // println("Game already ended: $rootStatus")
             return null
         }
 

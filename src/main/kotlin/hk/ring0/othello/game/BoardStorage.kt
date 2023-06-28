@@ -5,6 +5,21 @@ import java.util.Arrays
 class BoardStorage {
     private val cells: IntArray = intArrayOf(0, 0, 0, 0)
 
+    constructor() {}
+
+    constructor(hex: String) {
+        hex.split("-").forEachIndexed { i, s ->
+            cells[i] = s.toUInt(16).toInt()
+        }
+    }
+
+    constructor(cells: IntArray) {
+        this.cells[0] = cells[0]
+        this.cells[1] = cells[1]
+        this.cells[2] = cells[2]
+        this.cells[3] = cells[3]
+    }
+
     override fun hashCode(): Int {
         return Arrays.hashCode(cells)
     }
@@ -14,6 +29,10 @@ class BoardStorage {
             return false
         }
         return Arrays.equals(cells, other.cells)
+    }
+
+    fun toHex(): String {
+        return "%08x-%08x-%08x-%08x".format(cells[0], cells[1], cells[2], cells[3])
     }
 
     fun copy(): BoardStorage {

@@ -24,42 +24,14 @@ data class Move(val x: Int, val y: Int, val flippables: List<IntArray>)
 val DX = intArrayOf(-1, 0, 1, -1, 1, -1, 0, 1)
 val DY = intArrayOf(-1, -1, -1, 0, 0, 1, 1, 1)
 
-object BoardCache {
-    private val blackCache = mutableMapOf<Board, List<Board>>()
-    private val whiteCache = mutableMapOf<Board, List<Board>>()
-
-    val size get() = blackCache.size + whiteCache.size
-
-    var cacheHit = 0
-        private set
-
-    fun has(board: Board, player: Player) = when (player) {
-        Player.BLACK -> blackCache.containsKey(board)
-        Player.WHITE -> whiteCache.containsKey(board)
-    }
-
-    fun add(board: Board, player: Player, nextStates: List<Board>) = when (player) {
-        Player.BLACK -> blackCache[board] = nextStates
-        Player.WHITE -> whiteCache[board] = nextStates
-    }
-
-    fun get(board: Board, player: Player): List<Board>? {
-        val value = when (player) {
-            Player.BLACK -> blackCache[board]
-            Player.WHITE -> whiteCache[board]
-        }
-        if (value != null) {
-            cacheHit++
-        }
-        return value
-    }
-}
-
 class Board {
     private val store: BoardStorage
-    private var passes = 0
-    private var x = -1
-    private var y = -1
+    var passes = 0
+        private set
+    var x = -1
+        private set
+    var y = -1
+        private set
 
     constructor() : this(BoardStorage()) {
         this[3, 3] = 2
@@ -68,7 +40,7 @@ class Board {
         this[4, 4] = 2
     }
 
-    internal constructor(store: BoardStorage) {
+    constructor(store: BoardStorage) {
         this.store = store
     }
 
@@ -82,6 +54,8 @@ class Board {
         }
         return store == other.store && passes == other.passes && x == other.x && y == other.y
     }
+
+    fun toHex() = store.toHex()
 
     fun copy(): Board {
         val tempBoard = Board(store.copy())

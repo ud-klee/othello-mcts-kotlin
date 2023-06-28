@@ -6,9 +6,18 @@ import com.google.gson.Gson
 
 import hk.ring0.othello.game.Board
 import hk.ring0.othello.game.BoardCache
+import hk.ring0.othello.game.BoardStorage
 import hk.ring0.othello.game.Player
 import hk.ring0.othello.game.Status
 import hk.ring0.othello.mcts.MonteCarloTreeSearch
+
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun replay(path: String) {
     val s = File(path).readText()
@@ -62,6 +71,7 @@ fun simulate() {
 
         board = tempBoard
         println(board)
+        println(board.toHex())
 
         player = player.opponent
         status = board.getStatus(player)
@@ -77,10 +87,89 @@ fun simulate() {
     println("Board cache size/hit: ${BoardCache.size}/${BoardCache.cacheHit}")
 }
 
+fun api() {
+    embeddedServer(Netty, port = 8080) {
+        install(CORS) {
+            anyHost()
+        }
+        routing {
+            findNextMove()
+        }
+    }.start(wait = true)
+}
+
+fun Route.findNextMove() {
+    get("/find-next-move") handler@ {
+        val player = call.request.queryParameters["player"]
+        val board = call.request.queryParameters["board"]
+        val passes = call.request.queryParameters["passes"]
+        val level = call.request.queryParameters["level"]
+        if (player == null || board == null || passes == null || level == null) {
+            call.respondText(jsonError("Invalid request"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+            return@handler
+        }
+        if (player != "BLACK" && player != "WHITE") {
+            call.respondText(jsonError("Invalid player"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+            return@handler
+        }
+        if (!"^[0-9a-f]+(-[0-9a-f]+){3}$".toRegex().matches(board)) {
+            call.respondText(jsonError("Invalid board"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+            return@handler
+        }
+        try {
+            if (passes.toInt() !in 0..2) {
+                call.respondText(jsonError("Pass count out of range"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+                return@handler
+            }
+        } catch (ex: NumberFormatException) {
+            call.respondText(jsonError("Invalid pass count"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+            return@handler
+        }
+        try {
+            if (level.toInt() !in 1..10) {
+                call.respondText(jsonError("Level out of range"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+                return@handler
+            }
+        } catch (ex: NumberFormatException) {
+            call.respondText(jsonError("Invalid level"), ContentType.Application.Json, HttpStatusCode.fromValue(400))
+            return@handler
+        }
+        val nextMove = findNextMove(Board(BoardStorage(board)), Player.valueOf(player), passes.toInt(), level.toInt())
+        val response = mapOf(
+            "move" to arrayOf(nextMove.x, nextMove.y),
+            "passes" to nextMove.passes,
+            "board" to nextMove.toHex(),
+        )
+        println(nextMove)
+        call.respondText(jsonResponse(response), ContentType.Application.Json, HttpStatusCode.fromValue(200))
+    }
+}
+
+fun jsonError(msg: String) = "{\"error\": \"$msg\"}"
+
+fun jsonResponse(response: Map<String, Any>) = Gson().toJson(response)!!
+
+fun findNextMove(board: Board, player: Player, passes: Int, level: Int): Board {
+    for (i in 0 until passes) {
+        board.pass()
+    }
+    val mcts = MonteCarloTreeSearch(level)
+    var nextMove = mcts.findNextMove(board, player)
+    if (nextMove == null) {
+        nextMove = board
+        nextMove.pass()
+    }
+    return nextMove
+}
+
 fun main(args: Array<String>) {
-    if (args.size > 0 && args[0] == "replay") {
-        replay(args[1])
+    if (args.size > 0) {
+        when (args[0]) {
+            "replay" -> replay(args[1]);
+            "simulate" -> simulate();
+            else -> println("Usage: java hk.ring0.othello.MainKt [replay <file> | simulate]");
+        }
     } else {
-        simulate()
+        api()
     }
 }
